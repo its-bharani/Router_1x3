@@ -406,6 +406,144 @@ This module implements a register system designed to process packet data efficie
 
 ![image](https://github.com/user-attachments/assets/af793174-5063-473c-8382-a873f2657949)
 
+# **4.FSM**
+
+
+The `router_fsm` module is a Finite State Machine (FSM) designed to serve as the controller for a packet-based router. It generates control signals to manage data flow through the router and ensures the proper functioning of the routing process by interacting with various components like FIFOs and data buffers. This FSM supports tasks like address decoding, loading data and parity bytes, handling FIFO full conditions, and performing parity error checks.
+
+
+## **Inputs:**
+
+1. **clock**: Clock signal for synchronous operation.
+2. **resetn**: Active-low reset signal to initialize the FSM.
+3. **pkt\_valid**: Indicates the validity of an incoming packet.
+4. **fifo\_full**: Indicates whether the FIFO is full.
+5. **data\_in \[1:0]**: Input data for address or payload information.
+6. **parity\_done**: Signal to indicate the completion of parity checking.
+7. **low\_pkt\_valid**: Signal to indicate a low packet validity condition.
+8. **soft\_reset\_0, soft\_reset\_1, soft\_reset\_2**: Soft reset signals for different channels.
+
+## **Outputs:**
+
+1. **busy**: Indicates that the router is busy processing a packet.
+2. **detect\_add**: Signal to detect the incoming packet and latch the address byte.
+3. **lfd\_state**: Signal to indicate the loading of the first data byte into FIFO.
+4. **ld\_state**: Signal to indicate the loading of payload data into FIFO.
+5. **write\_enb\_reg**: Enable signal to write data into the FIFO.
+6. **full\_state**: Signal to indicate that the FIFO is in a full state.
+7. **laf\_state**: Signal to handle data loading after FIFO is full.
+8. **rst\_int\_reg**: Signal to reset internal registers.
+
+---
+
+### Logic Explanation
+
+#### 1. **State Encoding**
+
+* Defines unique 4-bit binary codes for each FSM state:
+
+  * `DECODE_ADDRESS`: 4'b0000
+  * `LOAD_FIRST_DATA`: 4'b0001
+  * `LOAD_DATA`: 4'b0010
+  * `LOAD_PARITY`: 4'b0011
+  * `FIFO_FULL_STATE`: 4'b0100
+  * `LOAD_AFTER_FULL`: 4'b0101
+  * `WAIT_TILL_EMPTY`: 4'b0110
+  * `CHECK_PARITY_ERR`: 4'b0111
+
+#### 2. **Registers**
+
+* **`current_state`**: Holds the current state of the FSM.
+* **`next_state`**: Determines the next state based on inputs and current state.
+* **`timeout_counter`**: A counter to manage timeout conditions for the FSM.
+
+#### 3. **FSM State Transition Logic**
+
+* **Reset Handling**: On active-low reset or soft reset, FSM transitions to `DECODE_ADDRESS` state, and the timeout counter is reset.
+* **Clock-Driven Transition**: FSM transitions to the `next_state` at every positive clock edge unless reset conditions are triggered.
+
+#### 4. **State Descriptions**
+
+1. **DECODE\_ADDRESS**
+
+   * Detects the incoming packet and latches the header byte.
+   * Transitions to `LOAD_FIRST_DATA`, `WAIT_TILL_EMPTY`, or remains in the same state based on `pkt_valid` and `data_in`.
+
+2. **LOAD\_FIRST\_DATA**
+
+   * Loads the first byte into the FIFO.
+   * Keeps the `busy` signal high to prevent header overwrites.
+   * Unconditionally transitions to `LOAD_DATA`.
+
+3. **LOAD\_DATA**
+
+   * Manages loading of payload data into the FIFO.
+   * Transitions to:
+
+     * `FIFO_FULL_STATE` when the FIFO is full.
+     * `LOAD_PARITY` when `pkt_valid` goes low.
+
+4. **LOAD\_PARITY**
+
+   * Latches the parity byte into the FIFO.
+   * Unconditionally transitions to `CHECK_PARITY_ERR`.
+
+5. **CHECK\_PARITY\_ERR**
+
+   * Performs a parity check and resets `low_pkt_valid`.
+   * Transitions to:
+
+     * `FIFO_FULL_STATE` if FIFO is full.
+     * `DECODE_ADDRESS` otherwise.
+
+6. **FIFO\_FULL\_STATE**
+
+   * Indicates FIFO full condition.
+   * Transitions to `LOAD_AFTER_FULL` when FIFO is no longer full.
+
+7. **LOAD\_AFTER\_FULL**
+
+   * Manages data loading after the FIFO is full.
+   * Transitions to:
+
+     * `LOAD_PARITY` if `low_pkt_valid` is high.
+     * `DECODE_ADDRESS` if `parity_done` is high.
+     * `LOAD_DATA` otherwise.
+
+8. **WAIT\_TILL\_EMPTY**
+
+   * Waits for the FIFO to empty before transitioning to `DECODE_ADDRESS`.
+
+#### 5. **Timeout Handling**
+
+* If the `timeout_counter` reaches its limit (`TIMEOUT_LIMIT`), the FSM resets to `DECODE_ADDRESS`.
+
+---
+
+This FSM is robust, with mechanisms for error checking, efficient data handling, and soft reset functionality, making it well-suited for high-performance router applications.
+
+## **SIMULATION**
+
+![image](https://github.com/user-attachments/assets/026382c8-2e49-441f-bf21-56a5887809ef)
+
+## **RTL SCHEMATIC**
+
+![image](https://github.com/user-attachments/assets/b97db7dc-39b4-4b62-a29b-81568b71322d)
+
+## **STATE MACHINE VIEWER**
+
+![image](https://github.com/user-attachments/assets/5e3ca2ea-8d6f-424c-bac8-e00413fe643c)
+
+
+# **TOP MODULE**
+
+## **RTL SCHEMATIC**
+![image](https://github.com/user-attachments/assets/92bdb05e-bfd8-462b-9781-68e26e5b19c1)
+
+
+
+
+
 
 
 
