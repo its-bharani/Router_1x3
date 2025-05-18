@@ -33,6 +33,9 @@ The **Router 1x3** is a device that forwards data packets between computer netwo
    - A mismatch triggers the `error` signal, notifying the source to resend the packet.  
 
 ---
+
+## **BLOCK DIAGRAM**
+
 ![image](https://github.com/user-attachments/assets/c026b586-7cbb-4045-a356-d33a15388c2a)
 
 
