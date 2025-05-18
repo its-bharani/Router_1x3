@@ -166,6 +166,136 @@ assign full = (write_ptr == {~read_ptr[4], read_ptr[3:0]});
 <img width="791" alt="fifo_rtl" src="https://github.com/user-attachments/assets/804cba36-57a1-47f8-bbf6-9f1066fc50f3" />
 
 ---
+# **2.Synchronizer Module** 
+
+
+The **Synchronizer Module** is a key component in a router design where a single input needs to be routed to multiple hosts. This module directs the incoming data to one of three FIFO buffers (hosts) and ensures reliable communication through the generation of proper synchronization signals. It is responsible for managing the flow of data, controlling write and read operations, and maintaining the integrity of data transfer between the router FSM and the router FIFO modules.
+
+The `router_sync` module ensures:
+1. Efficient routing of data to the appropriate FIFO based on input selection.
+2. Monitoring and signaling the full and empty status of FIFOs.
+3. Generating control signals like **write enables** and **valid outputs** for seamless data flow.
+4. Implementing a soft reset mechanism to handle inactivity scenarios, ensuring robust operation.
+
+
+## **Inputs**
+| Signal         | Width  | Description                                                                 |
+|----------------|--------|-----------------------------------------------------------------------------|
+| `clock`        | 1-bit  | System clock signal for synchronization.                                   |
+| `resetn`       | 1-bit  | Active low reset signal to reset internal logic.                           |
+| `detect_add`   | 1-bit  | Signal to latch the input address (`data_in`) for selecting a FIFO.         |
+| `data_in`      | 2-bits | Determines which FIFO (0, 1, or 2) is selected for routing data.            |
+| `write_en_reg` | 1-bit  | Control signal to enable writing to the selected FIFO.                     |
+| `empty`        | 3-bits | Indicates whether each of the three FIFOs is empty.                        |
+| `full`         | 3-bits | Indicates whether each of the three FIFOs is full.                         |
+| `read_en`      | 3-bits | Read enable signals for the three FIFOs.                                   |
+
+## **Outputs**
+| Signal         | Width  | Description                                                                 |
+|----------------|--------|-----------------------------------------------------------------------------|
+| `write_en`     | 3-bits | Write enable signals for the selected FIFO.                                |
+| `fifo_full`    | 1-bit  | Indicates whether the selected FIFO is full.                               |
+| `vld_out`      | 3-bits | Valid output signals indicating data availability in each FIFO.            |
+| `soft_reset`   | 3-bits | Soft reset signals for each FIFO to handle prolonged inactivity scenarios. |
+
+---
+
+## **Logic Explaination**
+
+### **1. Address Logic**
+This block determines which FIFO to target for data routing based on the `data_in` input.
+
+always @(posedge clock) begin
+    if (detect_add)
+        add <= data_in;
+end
+
+### **2. Write Enable Logic**
+This block generates the write_en signals for the selected FIFO.
+
+always @(*) begin
+    if (!write_en_reg)
+        write_en = 3'b000;
+    else begin
+        case (add)
+            2'b00: write_en = 3'b001;
+            2'b01: write_en = 3'b010;
+            2'b10: write_en = 3'b100;
+            default: write_en = 3'b000;
+        endcase
+    end
+end
+Enables writing to FIFO_0, FIFO_1, or FIFO_2 based on the value of add.
+
+### **3. FIFO Full Logic**
+Determines whether the selected FIFO is full.
+
+always @(*) begin
+    case (add)
+        2'b00: fifo_full = full[0];
+        2'b01: fifo_full = full[1];
+        2'b10: fifo_full = full[2];
+        default: fifo_full = 0;
+    endcase
+end
+
+Evaluates the full status of the selected FIFO.
+
+### **4. Valid Output Logic**
+Indicates whether valid data is available in each FIFO.
+
+assign vld_out[0] = !empty[0];
+assign vld_out[1] = !empty[1];
+assign vld_out[2] = !empty[2];
+Generates vld_out signals based on the empty status of the FIFOs.
+
+### **5. Soft Reset Logic**
+Implements a mechanism to reset FIFOs if no read operation occurs within 30 clock cycles after valid data is detected.
+
+genvar i;
+generate
+    for (i = 0; i < 3; i = i + 1) begin : soft_reset_logic
+        always @(posedge clock) begin
+            if (!resetn) begin
+                count_read[i] <= 0;
+                soft_reset[i] <= 0;
+            end else if (!vld_out[i]) begin
+                count_read[i] <= 0;
+                soft_reset[i] <= 0;
+            end else if (read_en[i]) begin
+                count_read[i] <= 0;
+                soft_reset[i] <= 0;
+            end else begin
+                if (count_read[i] == 29) begin
+                    count_read[i] <= 0;
+                    soft_reset[i] <= 1; // Trigger soft reset
+                end else begin
+                    count_read[i] <= count_read[i] + 1;
+                    soft_reset[i] <= 0;
+                end
+            end
+        end
+    end
+endgenerate
+Resets the counter and soft reset signal upon:
+
+Active resetn.
+
+FIFO becoming empty (vld_out[i] = 0).
+
+A read operation (read_en[i] = 1).
+
+
+## **SIMULATION**
+
+<img width="767" alt="image" src="https://github.com/user-attachments/assets/48ad2017-e852-4e4e-9220-8eb9a8bf82bb" />
+
+## **RTL SCHEMATIC**
+
+![image](https://github.com/user-attachments/assets/d6443e9a-6f79-4dd3-a24c-2a3148864207)
+
+
+
 
 ## License  
 This design is provided under the MIT License.  
