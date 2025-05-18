@@ -154,9 +154,12 @@ assign full = (write_ptr == {~read_ptr[4], read_ptr[3:0]});
 
 --Ensures correct packet handling for multi-byte packets.
 ## **SIMULATION**
+
 <img width="959" alt="fifo_tb" src="https://github.com/user-attachments/assets/5a49e52f-c7aa-4715-815b-bf1eb8604163" />
 <img width="945" alt="fifo_tb_2" src="https://github.com/user-attachments/assets/aacd66bb-f16b-47ba-8f89-abe8619f8a50" />
+
 ## **RTL SCHEMATIC**
+
 <img width="791" alt="fifo_rtl" src="https://github.com/user-attachments/assets/804cba36-57a1-47f8-bbf6-9f1066fc50f3" />
 
 ---
