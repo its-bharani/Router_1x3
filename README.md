@@ -93,7 +93,7 @@ Packets are divided into three fields: **Header**, **Payload**, and **Parity**.
 4. Ensure to handle the `busy` and `error` signals appropriately for proper packet management.  
 
 ---
-# 1. FIFO Module
+# **1. FIFO Module**
 
 This repository contains the implementation of a **First-In-First-Out (FIFO)** buffer, designed for data synchronization and buffering in digital systems. The FIFO supports multi-byte packet-based data handling with robust empty/full indicators.
 
@@ -293,6 +293,118 @@ A read operation (read_en[i] = 1).
 ## **RTL SCHEMATIC**
 
 ![image](https://github.com/user-attachments/assets/d6443e9a-6f79-4dd3-a24c-2a3148864207)
+
+
+# **3.Register Module in Verilog**
+
+## **Introduction**
+
+This module implements a register system designed to process packet data efficiently. It includes functionality for handling header bytes, managing FIFO states, computing internal parity, and detecting errors. The module ensures reliable data processing by using several internal registers and output control signals.
+
+
+
+### **Inputs**:
+
+| Signal        | Width | Description                                                                            |
+| ------------- | ----- | -------------------------------------------------------------------------------------- |
+| `clock`       | 1-bit | System clock signal used for latching registers.                                       |
+| `resetn`      | 1-bit | Active-low reset signal to initialize all registers and outputs.                       |
+| `pkt_valid`   | 1-bit | Indicates if the incoming packet is valid.                                             |
+| `data_in`     | 8-bit | Input data signal carrying the payload or header.                                      |
+| `fifo_full`   | 1-bit | Indicates if the FIFO buffer is full.                                                  |
+| `rst_int_reg` | 1-bit | Resets the `low_pkt_valid` signal.                                                     |
+| `detect_add`  | 1-bit | Detects the address byte and resets certain signals.                                   |
+| `ld_state`    | 1-bit | Indicates that the payload byte is being processed.                                    |
+| `laf_state`   | 1-bit | Handles the late arrival of data when the FIFO transitions.                            |
+| `full_state`  | 1-bit | Indicates whether the module is in a full state. Used for internal parity calculation. |
+
+### **Outputs**:
+
+| Signal          | Width | Description                                                             |
+| --------------- | ----- | ----------------------------------------------------------------------- |
+| `parity_done`   | 1-bit | Indicates the completion of parity checking.                            |
+| `low_pkt_valid` | 1-bit | Indicates that `pkt_valid` for the current packet has been deasserted.  |
+| `dout`          | 8-bit | Output data signal carrying the header or payload data.                 |
+| `err`           | 1-bit | Indicates an error if packet parity does not match the internal parity. |
+
+---
+
+## **Logic Explanation**
+
+### **1. Initialization and Reset Behavior**
+
+* **Purpose:** Ensures all outputs and registers are initialized to default values when `resetn` is low.
+* **Logic:**
+
+  * Resets `dout`, `err`, `parity_done`, and `low_pkt_valid` to `0`.
+  * Resets internal registers (`first_byte`, `full_state_byte`, `internal_parity`, `pkt_parity`) to `8'h00`.
+
+### **2. Parity Done (`parity_done`) Logic**
+
+* **Purpose:** Indicates that parity checking for the current packet is complete.
+* **Logic:**
+
+  * Set HIGH:
+
+    * When `ld_state` is high, and both `fifo_full` and `pkt_valid` are low.
+    * When `laf_state` and `low_pkt_valid` are high, and `parity_done` was previously low.
+  * Reset to LOW when `detect_add` is high.
+
+### **3. Low Packet Valid (`low_pkt_valid`) Logic**
+
+* **Purpose:** Tracks whether `pkt_valid` for the current packet has been deasserted.
+* **Logic:**
+
+  * Set HIGH when `ld_state` is high and `pkt_valid` is low.
+  * Reset to LOW when `rst_int_reg` is high.
+
+### **4. Output Data (`dout`) Logic**
+
+* **Purpose:** Controls how the input data (`data_in`) or internal registers are latched to `dout`.
+* **Behavior:**
+
+  * **Header Byte Latching:**
+
+    * When `detect_add` and `pkt_valid` are high, and `data_in[1:0] != 2'b11`, latch `data_in` to `first_byte`.
+  * **Payload Latching:**
+
+    * If `ld_state` is high and `fifo_full` is low, latch `data_in` to `dout`.
+    * If `ld_state` is high and `fifo_full` is high, latch `data_in` to `full_state_byte`.
+  * **Late Arrival Handling:**
+
+    * When `laf_state` is high, latch `dout` to `full_state_byte` (if `fifo_full` is high) or `first_byte` (if `fifo_full` is low).
+
+### **5. Internal Parity Calculation**
+
+* **Purpose:** Computes parity for error detection using XOR operations.
+* **Logic:**
+
+  * Reset to `8'h00` when `detect_add` is high.
+  * XOR header byte, payload bytes, and previous parity values based on state conditions (`laf_state` or `ld_state`).
+
+### **6. Error Detection (`err`) Logic**
+
+* **Purpose:** Flags errors when the packet parity does not match the internal parity.
+* **Logic:**
+
+  * Set HIGH if `parity_done` is high and `pkt_parity` does not match `internal_parity`.
+  * Reset to LOW when `parity_done` is low.
+
+### **7. Packet Parity Update**
+
+* **Purpose:** Stores the received packet parity byte for comparison with `internal_parity`.
+* **Logic:**
+
+  * Reset to `8'h00` when `detect_add` is high.
+  * Update with `data_in` during specific state conditions (`ld_state` or `laf_state`).
+    
+### **SIMULATION**
+
+![image](https://github.com/user-attachments/assets/facfce22-7f99-4f9e-af34-ac69bfa71258)
+
+### **RTL SCHEMATIC**
+
+![image](https://github.com/user-attachments/assets/af793174-5063-473c-8382-a873f2657949)
 
 
 
