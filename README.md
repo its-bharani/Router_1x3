@@ -537,14 +537,34 @@ This FSM is robust, with mechanisms for error checking, efficient data handling,
 
 # **TOP MODULE**
 
+## **Modules Overview**
+
+1. **Finite State Machine (FSM):**
+
+   * Controls the router's operations such as detecting addresses, managing write operations, and handling different states (load, full, empty).
+
+2. **FIFO:**
+
+   * Three separate FIFOs (`fifo_0`, `fifo_1`, `fifo_2`) manage data storage and retrieval for distinct output channels.
+   * Handles scenarios such as `fifo_full` and ensures smooth data flow.
+
+3. **Register:**
+
+   * Temporarily holds incoming data packets.
+   * Facilitates seamless data transfer between the input and output sections of the router.
+
+4. **Synchronizer:**
+
+   * Acts as a bridge between the FSM and the FIFOs.
+   * Decodes the packet address and routes data to the correct FIFO buffer.
+
 ## **RTL SCHEMATIC**
 ![image](https://github.com/user-attachments/assets/92bdb05e-bfd8-462b-9781-68e26e5b19c1)
 
 
+# **Conclusion**
 
-
-
-
+The router was successfully designed and verified through a systematic approach. Each module was first simulated in isolation using **ModelSim**, ensuring that it met functional requirements. Post-verification, the integrated design was synthesized using **Quartus Prime**, confirming its hardware feasibility. This modular design methodology ensures scalability and flexibility for future modifications.
 
 
 ## License  
